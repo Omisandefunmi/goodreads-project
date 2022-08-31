@@ -6,25 +6,35 @@ import africa.semicolon.goodreads.dtos.UserDto;
 
 import africa.semicolon.goodreads.events.SendMessageEvent;
 import africa.semicolon.goodreads.exceptions.GoodReadException;
+import africa.semicolon.goodreads.models.Role;
 import africa.semicolon.goodreads.models.User;
 import africa.semicolon.goodreads.models.VerificationMessageRequest;
 import africa.semicolon.goodreads.repositories.UserRepository;
 import africa.semicolon.goodreads.security.jwt.TokenProvider;
 import io.jsonwebtoken.Claims;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-public class UserServiceImpl implements UserService{
+public class UserServiceImpl implements UserService, UserDetailsService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -146,4 +156,20 @@ public class UserServiceImpl implements UserService{
         }
     }
 
+    @Override @SneakyThrows
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException{
+        User user = userRepository.findUserByEmail(email).orElse(null);
+        if(user != null){
+            return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(), getAuthorities(user.getRoles()));
+        }
+        return null;
+    }
+
+    private Collection<? extends GrantedAuthority> getAuthorities(Set<Role> roles){
+        return roles.stream()
+                .map(
+                        role -> new SimpleGrantedAuthority(role.getRoleType().name())
+                )
+                .collect(Collectors.toSet());
+    }
 }
