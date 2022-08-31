@@ -93,7 +93,7 @@ public class User {
 
     private String location;
 
-    private String isVerified;
+    private boolean isVerified;
 
     @Enumerated(value = EnumType.STRING)
     private Gender gender;

@@ -10,6 +10,7 @@ import africa.semicolon.goodreads.models.User;
 import africa.semicolon.goodreads.models.VerificationMessageRequest;
 import africa.semicolon.goodreads.repositories.UserRepository;
 import africa.semicolon.goodreads.security.jwt.TokenProvider;
+import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.ApplicationEventPublisher;
@@ -17,8 +18,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 @Service
 @Slf4j
@@ -85,7 +87,7 @@ public class UserServiceImpl implements UserService{
         updatedUser.setId(userToBeUpdated.getId());
         updatedUser.setDateJoined(userToBeUpdated.getDateJoined());
         updatedUser.setRoles(userToBeUpdated.getRoles());
-        updatedUser.setIsVerified(userToBeUpdated.getIsVerified());
+        updatedUser.setVerified(userToBeUpdated.isVerified());
 
         userRepository.save(updatedUser);
 
@@ -96,6 +98,44 @@ public class UserServiceImpl implements UserService{
     public UserDto findUserByEmail(String email) throws GoodReadException {
         User user = userRepository.findUserByEmail(email).orElseThrow(() -> new GoodReadException(String.format("User with email %s not found", email), 404));
         return modelMapper.map(user, UserDto.class);
+    }
+
+    @Override
+    public void verifyUser(String token) throws GoodReadException {
+        Claims claims = tokenProvider.getAllClaimsFromJWTToken(token);
+        Function<Claims, String> getSubjectFromClaim = Claims::getSubject;
+        Function<Claims, Date> getExpirationDateFromClaim = Claims::getExpiration;
+        Function<Claims, Date> getIssuedAtDateFromClaim = Claims::getIssuedAt;
+
+        String userId = getSubjectFromClaim.apply(claims);
+        if(userId == null){
+            throw new GoodReadException("User id not found in verification token", 404);
+        }
+
+        Date expiryDate = getExpirationDateFromClaim.apply(claims);
+        if (expiryDate == null){
+            throw new GoodReadException("Expiry date not found in verification token", 404);
+        }
+
+        Date issuedAtDate = getIssuedAtDateFromClaim.apply(claims);
+        if(issuedAtDate == null){
+            throw new GoodReadException("Issued at date not found in verification token", 404);
+        }
+
+        if(expiryDate.compareTo(issuedAtDate) > 14.4){
+            throw new GoodReadException("Verification has already expired", 404);
+        }
+
+        User user = findUserByIdInternal(userId);
+        if (user == null){
+            throw new GoodReadException("User id does not exist", 404);
+        }
+        user.setVerified(true);
+        userRepository.save(user);
+    }
+
+    private User findUserByIdInternal(String userId) {
+        return userRepository.findUserById(Long.parseLong(userId)).orElse(null);
     }
 
 

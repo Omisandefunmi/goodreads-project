@@ -17,4 +17,6 @@ public interface UserService {
     List<UserDto> findAllUsers();
     UserDto updateUserProfile(String id, UpdateProfileRequest request) throws GoodReadException;
     UserDto findUserByEmail(String email) throws GoodReadException;
+
+    void verifyUser(String token) throws GoodReadException;
 }
