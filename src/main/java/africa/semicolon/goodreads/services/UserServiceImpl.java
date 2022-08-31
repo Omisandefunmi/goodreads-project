@@ -1,6 +1,7 @@
 package africa.semicolon.goodreads.services;
 
 import africa.semicolon.goodreads.controllers.requestsAndResponses.CreateAccountRequest;
+import africa.semicolon.goodreads.controllers.requestsAndResponses.UpdateProfileRequest;
 import africa.semicolon.goodreads.dtos.UserDto;
 
 import africa.semicolon.goodreads.events.SendMessageEvent;
@@ -16,6 +17,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -26,7 +29,8 @@ public class UserServiceImpl implements UserService{
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final TokenProvider tokenProvider;
 
-    public UserServiceImpl(UserRepository userRepository, ModelMapper modelMapper, ApplicationEventPublisher applicationEventPublisher, BCryptPasswordEncoder bCryptPasswordEncoder, TokenProvider tokenProvider){
+    public UserServiceImpl(UserRepository userRepository, ModelMapper modelMapper, ApplicationEventPublisher applicationEventPublisher,
+                           BCryptPasswordEncoder bCryptPasswordEncoder, TokenProvider tokenProvider){
         this.modelMapper = modelMapper;
         this.userRepository = userRepository;
         this.applicationEventPublisher = applicationEventPublisher;
@@ -57,6 +61,43 @@ public class UserServiceImpl implements UserService{
         return modelMapper.map(savedUser, UserDto.class);
 
     }
+
+    @Override
+    public UserDto findUserById(String userId) throws GoodReadException {
+        User user = userRepository.findUserById(Long.parseLong(userId)).orElseThrow(
+                () -> new GoodReadException(String.format("User with id %s not found",userId), 400));
+        return  modelMapper.map(user, UserDto.class);
+    }
+
+    @Override
+    public List<UserDto> findAllUsers() {
+        return userRepository.findAll()
+                .stream()
+                .map(user -> modelMapper.map(user, UserDto.class))
+                .toList();
+    }
+
+    @Override
+    public UserDto updateUserProfile(String id, UpdateProfileRequest request) throws GoodReadException {
+        User userToBeUpdated = userRepository.findUserById(Long.parseLong(id)).orElseThrow(() ->
+                new GoodReadException(String.format("User with id %s not found", id), 404));
+        User updatedUser = modelMapper.map(request, User.class);
+        updatedUser.setId(userToBeUpdated.getId());
+        updatedUser.setDateJoined(userToBeUpdated.getDateJoined());
+        updatedUser.setRoles(userToBeUpdated.getRoles());
+        updatedUser.setIsVerified(userToBeUpdated.getIsVerified());
+
+        userRepository.save(updatedUser);
+
+        return modelMapper.map(updatedUser, UserDto.class);
+    }
+
+    @Override
+    public UserDto findUserByEmail(String email) throws GoodReadException {
+        User user = userRepository.findUserByEmail(email).orElseThrow(() -> new GoodReadException(String.format("User with email %s not found", email), 404));
+        return modelMapper.map(user, UserDto.class);
+    }
+
 
     private void validate(String email) throws GoodReadException {
         User user = userRepository.findUserByEmail(email).orElse(null);
