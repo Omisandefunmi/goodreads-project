@@ -2,7 +2,7 @@ package africa.semicolon.goodreads.controllers;
 
 import africa.semicolon.goodreads.controllers.requestsAndResponses.ApiResponse;
 import africa.semicolon.goodreads.controllers.requestsAndResponses.CreateAccountRequest;
-import africa.semicolon.goodreads.exceptions.GoodReadException;
+import africa.semicolon.goodreads.exceptions.GoodReadsException;
 import africa.semicolon.goodreads.services.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,7 +25,7 @@ public class AuthController {
         this.userService = userService;
     }
 
-    public ResponseEntity<?> createUser(HttpServletRequest httpRequest, @RequestBody @Valid @NotNull CreateAccountRequest request) throws GoodReadException {
+    public ResponseEntity<?> createUser(HttpServletRequest httpRequest, @RequestBody @Valid @NotNull CreateAccountRequest request) throws GoodReadsException {
         String host = httpRequest.getRequestURL().toString();
         int index = host.indexOf("/", host.indexOf("/", host.indexOf("/"))+2);
         host = host.substring(0, index+1);

@@ -5,7 +5,7 @@ import africa.semicolon.goodreads.controllers.requestsAndResponses.UpdateProfile
 import africa.semicolon.goodreads.dtos.UserDto;
 
 import africa.semicolon.goodreads.events.SendMessageEvent;
-import africa.semicolon.goodreads.exceptions.GoodReadException;
+import africa.semicolon.goodreads.exceptions.GoodReadsException;
 import africa.semicolon.goodreads.models.Role;
 import africa.semicolon.goodreads.models.User;
 import africa.semicolon.goodreads.models.VerificationMessageRequest;
@@ -50,7 +50,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         this.tokenProvider = tokenProvider;
     }
     @Override
-    public UserDto createUserAccount(String host, CreateAccountRequest request) throws GoodReadException {
+    public UserDto createUserAccount(String host, CreateAccountRequest request) throws GoodReadsException {
         validate(request.getEmail());
         User user = new User(request.getFirstName(), request.getLastName(), request.getEmail(), bCryptPasswordEncoder.encode(request.getPassword()));
 
@@ -75,9 +75,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public UserDto findUserById(String userId) throws GoodReadException {
+    public UserDto findUserById(String userId) throws GoodReadsException {
         User user = userRepository.findUserById(Long.parseLong(userId)).orElseThrow(
-                () -> new GoodReadException(String.format("User with id %s not found",userId), 400));
+                () -> new GoodReadsException(String.format("User with id %s not found",userId), 400));
         return  modelMapper.map(user, UserDto.class);
     }
 
@@ -90,9 +90,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public UserDto updateUserProfile(String id, UpdateProfileRequest request) throws GoodReadException {
+    public UserDto updateUserProfile(String id, UpdateProfileRequest request) throws GoodReadsException {
         User userToBeUpdated = userRepository.findUserById(Long.parseLong(id)).orElseThrow(() ->
-                new GoodReadException(String.format("User with id %s not found", id), 404));
+                new GoodReadsException(String.format("User with id %s not found", id), 404));
         User updatedUser = modelMapper.map(request, User.class);
         updatedUser.setId(userToBeUpdated.getId());
         updatedUser.setDateJoined(userToBeUpdated.getDateJoined());
@@ -105,13 +105,13 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public UserDto findUserByEmail(String email) throws GoodReadException {
-        User user = userRepository.findUserByEmail(email).orElseThrow(() -> new GoodReadException(String.format("User with email %s not found", email), 404));
+    public UserDto findUserByEmail(String email) throws GoodReadsException {
+        User user = userRepository.findUserByEmail(email).orElseThrow(() -> new GoodReadsException(String.format("User with email %s not found", email), 404));
         return modelMapper.map(user, UserDto.class);
     }
 
     @Override
-    public void verifyUser(String token) throws GoodReadException {
+    public void verifyUser(String token) throws GoodReadsException {
         Claims claims = tokenProvider.getAllClaimsFromJWTToken(token);
         Function<Claims, String> getSubjectFromClaim = Claims::getSubject;
         Function<Claims, Date> getExpirationDateFromClaim = Claims::getExpiration;
@@ -119,26 +119,26 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         String userId = getSubjectFromClaim.apply(claims);
         if(userId == null){
-            throw new GoodReadException("User id not found in verification token", 404);
+            throw new GoodReadsException("User id not found in verification token", 404);
         }
 
         Date expiryDate = getExpirationDateFromClaim.apply(claims);
         if (expiryDate == null){
-            throw new GoodReadException("Expiry date not found in verification token", 404);
+            throw new GoodReadsException("Expiry date not found in verification token", 404);
         }
 
         Date issuedAtDate = getIssuedAtDateFromClaim.apply(claims);
         if(issuedAtDate == null){
-            throw new GoodReadException("Issued at date not found in verification token", 404);
+            throw new GoodReadsException("Issued at date not found in verification token", 404);
         }
 
         if(expiryDate.compareTo(issuedAtDate) > 14.4){
-            throw new GoodReadException("Verification has already expired", 404);
+            throw new GoodReadsException("Verification has already expired", 404);
         }
 
         User user = findUserByIdInternal(userId);
         if (user == null){
-            throw new GoodReadException("User id does not exist", 404);
+            throw new GoodReadsException("User id does not exist", 404);
         }
         user.setVerified(true);
         userRepository.save(user);
@@ -149,10 +149,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
 
-    private void validate(String email) throws GoodReadException {
+    private void validate(String email) throws GoodReadsException {
         User user = userRepository.findUserByEmail(email).orElse(null);
         if(user != null){
-            throw new GoodReadException("User already exists", 400);
+            throw new GoodReadsException("User already exists", 400);
         }
     }
 
